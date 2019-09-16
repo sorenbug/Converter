@@ -171,7 +171,7 @@ class Phase1ReadTypescript(
                 case TsIdentLibraryScoped("uifabric", _)       => true
                 case TsIdentLibraryScoped("tensorflow", _)     => true
                 case TsIdentLibraryScoped("ant-design", _)     => true
-                case _                                         => false
+                case _                                         => true
               }
 
               val involvesReact = {
@@ -217,6 +217,7 @@ object Phase1ReadTypescript {
       T.ResolveTypeQueries.visitTsParsedFile(scope.caching), // before ReplaceExports
       new modules.ReplaceExports(LoopDetector.initial).visitTsParsedFile(scope.caching),
       FlattenTrees.apply,
+      T.InferTypeParam.visitTsParsedFile(scope.caching), //before DefaultedTypeArguments
       T.DefaultedTypeArguments.visitTsParsedFile(scope.caching), //after FlattenTrees
       if (enableExpandTypeMappings) T.ExpandTypeMappings.visitTsParsedFile(scope.caching) else identity, // before ExtractInterfaces
       if (enableExpandTypeMappings) T.ExpandTypeMappings.After(libName, scope) else identity, // before ExtractInterfaces

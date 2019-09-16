@@ -66,8 +66,6 @@ object PhaseRes {
     }
 
   def attempt[Id, T](id: Id, logger: Logger[Unit], t: => PhaseRes[Id, T]): PhaseRes[Id, T] =
-    if (false) t
-    else
       try t
       catch {
         case th: LoggedException =>
@@ -76,6 +74,7 @@ object PhaseRes {
           logger.error(s"Caught exception: ${th.getMessage}", th)
           Failure[Id, T](Map(id -> Left(th)))
         case th: StackOverflowError =>
+          th.printStackTrace
           logger.error("StackOverflowError", th)
           Failure[Id, T](Map(id -> Left(th)))
       }

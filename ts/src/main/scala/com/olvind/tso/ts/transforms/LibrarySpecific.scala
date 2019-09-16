@@ -76,6 +76,30 @@ object LibrarySpecific {
     }
   }
 
+  object atMaterialUiCore extends Named {
+    override val libName: TsIdentLibrary = TsIdentLibraryScoped("material-ui", Some("core"))
+    val OverridableComponent    = TsQIdent(List(TsIdentSimple("OverridableComponent")))
+    val DefaultComponentProps   = TsQIdent(List(TsIdentModule(Some("material-ui"), List("core", "OverridableComponent")), TsIdentSimple("DefaultComponentProps")))
+
+    override def enterTsTypeRef(t: TsTreeScope)(x: TsTypeRef): TsTypeRef =
+      x match {
+        case TsTypeRef(cs, OverridableComponent, Seq(one)) =>
+          TsTypeRef(
+            cs,
+            TsQIdent(List(TsIdentLibrary("react"), TsIdentModule(None, List("react")), TsIdentSimple("FC"))),
+            List(TsTypeRef(NoComments, DefaultComponentProps, List(one))),
+          )
+        case other => other
+
+      }
+    override def enterTsDecl(t: TsTreeScope)(x: TsDecl): TsDecl = x match {
+      /* Error: cyclic aliasing or subtyping involving type Mix */
+      case ta @ TsDeclTypeAlias(_, _, name, tps, _, _) if name.value.startsWith("Mix") =>
+        ta.copy(alias = TsTypeIntersect(TsTypeParam.asTypeArgs(tps)))
+      case other => other
+    }
+  }
+
   object react extends Named {
     val libName       = TsIdentLibrarySimple("react")
     val ReactElement  = TsIdent("ReactElement")
@@ -123,7 +147,7 @@ object LibrarySpecific {
   }
 
   val patches: Map[TsIdentLibrary, Named] =
-    Seq(atUifabricFoundation, aMap, emberPolyfills, emotion, react, styledComponents).map(x => x.libName -> x).toMap
+    Seq(atUifabricFoundation, aMap, emberPolyfills, emotion, atMaterialUiCore, react, styledComponents).map(x => x.libName -> x).toMap
 
   def apply(libName: TsIdentLibrary): Option[TreeTransformationScopedChanges] = patches.get(libName)
 }

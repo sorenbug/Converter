@@ -9,7 +9,6 @@ import scala.scalajs.js.annotation._
 @js.native
 object ^ extends js.Object {
   val newPerson: Instantiable0[Person] = js.native
-  val proxy: ProxiedPerson = js.native
   def foo(): Person = js.native
 }
 

@@ -293,6 +293,9 @@ object TsTreeScope {
       logger.fatal(s"Circular tree detected")
     }
 
+    if (stack.size > 15){
+      print(1)
+    }
     lazy val exports: Seq[TsExport] =
       current match {
         case x: TsContainer => x.exports

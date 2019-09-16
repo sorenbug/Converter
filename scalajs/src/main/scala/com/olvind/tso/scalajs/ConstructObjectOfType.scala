@@ -8,7 +8,7 @@ import scala.collection.immutable.SortedMap
 
 object ConstructObjectOfType {
   /* javascript limitation */
-  val MaxParamsForMethod = 254
+  val MaxParamsForMethod = 200
 
   final case class Param(parameter: ParamTree, isOptional: Boolean, asString: Either[String, String => String])
 

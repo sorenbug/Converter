@@ -27,10 +27,10 @@ object ExpandTypeMappings extends TreeTransformationScopedChanges {
       }
 
       override def enterTsType(scope: TsTreeScope)(x: TsType): TsType =
-        AllMembersFor.forType(scope)(x) match {
+        AllMembersFor.forType(scope.`..`)(x) match {
           case Problems(problems) =>
             if (Debug) {
-              AllMembersFor.forType(scope)(x)
+              AllMembersFor.forType(scope.`..`)(x)
               problems.foreach(p => scope.logger.warn(p.toString))
             }
             x
@@ -172,7 +172,7 @@ object ExpandTypeMappings extends TreeTransformationScopedChanges {
   case class UnsupportedTM(scope:    TsTreeScope, tm:   TsMemberTypeMapped) extends Problem
   case class CouldNotPickKeys(scope: TsTreeScope, keys: Set[String]) extends Problem
 
-  final case class Replace(key: TsType, name: String) extends TreeTransformationScopedChanges {
+  final case class Replace(key: TsTypeRef, name: String) extends TreeTransformationScopedChanges {
     override def enterTsType(scope: TsTreeScope)(x: TsType): TsType =
       x match {
         case `key` => TsTypeLiteral(TsLiteralString(name))
@@ -267,11 +267,14 @@ object ExpandTypeMappings extends TreeTransformationScopedChanges {
     }
 
   object AllMembersFor {
-    def forType(scope: TsTreeScope)(tpe: TsType): Res[Seq[TsMember]] =
+    def forType(_scope: TsTreeScope)(tpe: TsType): Res[Seq[TsMember]] = {
+//      if (_scope.stack contains tpe) return Problems(List(Loop(_scope)))
+
+      val scope = _scope / tpe
       tpe match {
         case x: TsTypeRef => apply(scope)(x)
         case x: TsTypeIntersect =>
-          Res.sequence(x.types.map(forType(scope))).map(_.flatten).withIsRewritten
+          Res.sequence(x.types.map(forType(scope))).map(_.flatten)
         case x: TsTypeUnion =>
           Res
             .sequence(x.types.map(forType(scope)))
@@ -336,6 +339,18 @@ object ExpandTypeMappings extends TreeTransformationScopedChanges {
           if (evaluatePredicate(pred)) forType(scope)(ifTrue)
           else forType(scope)(ifFalse)
 
+        case x: TsTypeLookup =>
+          Problems(List(InvalidType(scope, x)))
+//          x.from match {
+//            case x: TsTypeRef if scope.isAbstract(x.name) => Problems(List(NotStatic(scope, x)))
+//            case _ =>
+//              ResolveTypeLookups.expandLookupType(scope, x) match {
+//                case Some(value) =>
+//                  forType(scope)(value)
+//                case None => Problems(List(InvalidType(scope, x)))
+//              }
+//          }
+
         case x: TsTypeExtends     => Problems(List(InvalidType(scope, x)))
         case x: TsTypeInfer       => Problems(List(InvalidType(scope, x)))
         case x: TsTypeLiteral     => Problems(List(InvalidType(scope, x)))
@@ -346,9 +361,9 @@ object ExpandTypeMappings extends TreeTransformationScopedChanges {
         case x: TsTypeQuery       => Problems(List(InvalidType(scope, x)))
         case x: TsTypeRepeated    => Problems(List(InvalidType(scope, x)))
         case x: TsTypeKeyOf       => Problems(List(InvalidType(scope, x)))
-        case x: TsTypeLookup      => Problems(List(InvalidType(scope, x)))
         case x: TsTypeThis        => Problems(List(InvalidType(scope, x)))
       }
+    }
 
     def extract(members: Seq[TsMember], wanted: Set[String]): Option[Seq[TsMember]] =
       members.collect {
@@ -391,8 +406,8 @@ object ExpandTypeMappings extends TreeTransformationScopedChanges {
                 .map(fromParents => handleOverridingFields(members, fromParents.flatten))
           }
 
-        case (x: TsDeclTypeAlias, _) =>
-          forType(scope)(FillInTParams(x, typeRef.tparams).alias)
+        case (x: TsDeclTypeAlias, newScope) =>
+          forType(newScope)(FillInTParams(x, typeRef.tparams).alias)
       }
 
       val ret = res.getOrElse(Problems(List(TypeNotFound(scope, typeRef))))

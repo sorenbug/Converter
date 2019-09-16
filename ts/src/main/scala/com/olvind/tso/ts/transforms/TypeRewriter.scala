@@ -8,7 +8,7 @@ class TypeRewriter(base: TsTree) extends TreeTransformation[Map[TsType, TsType]]
     replacements.getOrElse(x, x)
 
   override def withTree(t: Map[TsType, TsType], tree: TsTree): Map[TsType, TsType] =
-    if (tree === base) t
+    if (tree eq base) t
     else
       tree match {
         /* Handle if the current tree introduces a new type parameter which shadows what we are trying to inline */
